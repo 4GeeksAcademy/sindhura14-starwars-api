@@ -19,27 +19,38 @@ class User(db.Model):
         return {
             "id": self.id,
             "email": self.email,
-            "is_active":self.is_active
+            "is_active":self.is_active,
+            "favorites": [fav.serialize() for fav in self.favorites]
         }
 
 class Favorites(db.Model):
+    __tablename__ = 'favorites'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    character_id = db.Column(db.Integer, db.ForeignKey('Characters.id'))
+    character_id = db.Column(db.Integer, db.ForeignKey('characters.id'))
     planet_id = db.Column(db.Integer, db.ForeignKey('planets.id'))
 
     character = db.relationship("Characters", backref="favorites")
     planet = db.relationship("Planets", backref="favorites")
 
+    def __repr__(self) -> str:
+        # name = getattr(self.character, "__repr__", False) or getattr(self.planet, "__repr__", False)
+        # return name()
+        name = getattr(self.character, "name", False) or getattr(self.planet, "name", False)
+        fav_type = "Planet" if self.planet_id else "Character"
+        return f"<{fav_type} {name}>"
+
     def serialize(self):
         return {
             "id": self.id,
             "user_id": self.user_id,
+            # "character": self.character.serialize(),
             "character_id": self.character_id,
             "planet_id": self.planet_id,
         }   
 
 class Characters(db.Model):
+    __tablename__ = 'characters'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String,nullable=False)
     gender = db.Column(db.String)
@@ -48,7 +59,7 @@ class Characters(db.Model):
     is_fav = db.Column(db.Boolean,default=False)
     details = db.Column(db.String(128))
     birth_year=db.Column(db.String)
-    height=db.Column(db.Numeric(1,2))
+    height=db.Column(db.Integer)
     image_url=db.Column(db.String(128))
 
     def serialize(self):
@@ -67,6 +78,7 @@ class Characters(db.Model):
 
 
 class Planets(db.Model):
+    __tablename__ = 'planets'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String,nullable=False)
     diameter = db.Column(db.Numeric(5,0))

@@ -4,7 +4,10 @@ This module takes care of starting the API Server, Loading the DB and Adding the
 from flask import Flask, request, jsonify, Blueprint
 from backend.models import db, User,Characters,Planets,Favorites
 from flask_cors import CORS
-from flask_login import current_user
+from flask_jwt_extended import (
+    create_access_token, current_user, jwt_required
+)
+
 
 
 
@@ -55,13 +58,13 @@ def create_user():
 #get current user
 @api.route("/users/current", methods=["GET"])
 def get_current_user():
-    return jsonify(current_user.serialize(include_favorites=True))
+    return jsonify(current_user.serialize())
 
 #get all users
 @api.route("/users", methods=["GET"])
 def get_all_users():
     all_users = User.query.all()
-    users=[user.serialize(include_favorites=True) for user in all_users] 
+    users=[user.serialize() for user in all_users] 
     return jsonify(users)
 
 #get a particular user
@@ -70,7 +73,7 @@ def get_single_user(email):
     user = User.query.filter_by(email=email).first()
     if not user:
         return jsonify(msg="User does not exist."), 404
-    return jsonify(user.serialize(include_favorites=True))
+    return jsonify(user.serialize())
 
 #get user favorites
 @api.route("/users/<int:id>/favourites",methods=['GET'])
@@ -87,7 +90,7 @@ def get_user_favorites(id):
 @api.route("/people", methods=["GET"])
 def get_all_characters():
     characters = Characters.query.all()
-    characters=[person.serialize(include_user=True) for person in characters]
+    characters=[person.serialize() for person in characters]
     return jsonify(characters)
 
 #get a particular person
@@ -96,13 +99,13 @@ def get_single_character(id: int):
     character = Characters.query.filter_by(id=id).first()
     if not character:
         return jsonify(msg="Character does not exist."), 404
-    return jsonify(character.serialize(include_user=True))
+    return jsonify(character.serialize())
 
 #get all planets
 @api.route("/planets", methods=["GET"])
 def get_all_planets():
     planets = Planets.query.all()
-    return jsonify(planets=[planet.serialize(include_user=True) for planet in planets])
+    return jsonify(planets=[planet.serialize() for planet in planets])
 
 #get a particular planet
 @api.route("/planet/<int:id>", methods=["GET"])
@@ -110,12 +113,13 @@ def get_single_planet(id: int):
     planet = Planets.query.filter_by(id=id).first()
     if not planet:
         return jsonify(msg="Planet does not exist."), 404
-    return jsonify(planet.serialize(include_user=True))
+    return jsonify(planet.serialize())
 
 #add a  favorite planet
-@api.route('/favourite/planet/<int:planets_id>', methods=['POST'])
+@api.route('/favorite/planet/<int:planets_id>', methods=['POST'])
 def add_favourite_planet(planets_id):
     user_id = current_user.id
+    print(user_id)
     user = User.query.get(user_id)
     if not user:
         return jsonify(msg="User not found"), 404
@@ -130,7 +134,7 @@ def add_favourite_planet(planets_id):
     return jsonify(msg='Favourite planet added successfully'), 200
 
 #add a favorite person
-@api.route('/favourite/people/<int:character_id>', methods=['POST'])
+@api.route('/favorite/people/<int:character_id>', methods=['POST'])
 def add_favorite_character(character_id):
     user_id = current_user.id
     user = User.query.get(user_id)
@@ -149,7 +153,7 @@ def add_favorite_character(character_id):
 
 
 #delete a planet from favorites
-@api.route('/favourite/planet/<int:planet_id>', methods=['DELETE'])
+@api.route('/favorite/planet/<int:planet_id>', methods=['DELETE'])
 def delete_favorite_planet(planet_id):
     user_id = current_user.id
     favorite_planet = Favorites.query.filter_by(user_id=user_id, planet_id=planet_id).first()
@@ -162,7 +166,7 @@ def delete_favorite_planet(planet_id):
     return jsonify(msg='Favourite planet deleted successfully'), 200
 
 #delete a person from favorites
-@api.route('/favourite/people/<int:[character_id]>', methods=['DELETE'])
+@api.route('/favorite/people/<int:character_id>', methods=['DELETE'])
 def delete_favorite_character(character_id):
     user_id = request.headers.get('user_id')
     favorite_character = Favorites.query.filter_by(user_id=user_id, character_id=character_id).first()
